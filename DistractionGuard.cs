@@ -7,11 +7,17 @@ namespace DistractionGuard
 {
   internal class DistractionGuard
   {
+
     private static bool Running = true;
     internal static void Close()
     {
-      Running = false;
+      SetRunning(false);
     }
+    internal static void SetRunning(bool b)
+    {
+      Running = b;
+    }
+
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
@@ -23,7 +29,7 @@ namespace DistractionGuard
 
     internal static Dictionary<string,int> LoadConfig()
     {
-      Console.WriteLine("HERE:" + System.Reflection.Assembly.GetExecutingAssembly().Location);
+      Globals.Debug("HERE:" + System.Reflection.Assembly.GetExecutingAssembly().Location);
       var path = "";
       var dtConfig = "C:/Users/sky/Desktop/config.txt";
       var defaultConfig = "config.txt";
@@ -35,7 +41,7 @@ namespace DistractionGuard
       {
         path = defaultConfig;
       }
-      Console.WriteLine($"Using config {path}");
+      Globals.Debug($"Using config {path}");
       var contents = File.ReadAllText(path);
 
       var file = Regex.Split(contents, "\n|\r\n");
@@ -45,13 +51,13 @@ namespace DistractionGuard
       {
         if (f.Length > 0 && f[0] == ';')
         {
-          Console.WriteLine("Skipping " + f);
+          Globals.Debug("Skipping " + f);
           continue;
         }
         var pair = f.Split("=");
         if (pair.Length < 2)
         {
-          if (f.Trim().Length > 0) Console.WriteLine("Skipping line: " + f);
+          if (f.Trim().Length > 0) Globals.Debug("Skipping line: " + f);
           continue;
         }
         var i = int.Parse(pair[1]);
@@ -60,7 +66,7 @@ namespace DistractionGuard
       foreach (var c in config)
       {
 
-        Console.WriteLine($"{c.Key}<->{c.Value}");
+        Globals.Debug($"{c.Key}<->{c.Value}");
       }
       return config;
     }
@@ -69,18 +75,23 @@ namespace DistractionGuard
       var config = DistractionGuard.LoadConfig();
       var hwnd = GetForegroundWindow();
       string hwndName = GetWindowTitle(hwnd);
-      while (Running)
+      while (true)
       {
         Thread.Sleep(10);
+        if (!Running)
+        {
+          Thread.Sleep(500);
+          continue;
+        }
         var newHwnd = GetForegroundWindow();
         string newHwndName = GetWindowTitle(newHwnd);
         if (hwnd != newHwnd && !string.IsNullOrWhiteSpace(newHwndName) &&
           newHwnd != IntPtr.Zero)
         {
-          Console.WriteLine($"HWND switched from");
-          Console.WriteLine($"    {hwndName} ({hwnd})");
-          Console.WriteLine("    to");
-          Console.WriteLine($"    {newHwndName} ({newHwnd})");
+          Globals.Debug($"HWND switched from");
+          Globals.Debug($"    {hwndName} ({hwnd})");
+          Globals.Debug("    to");
+          Globals.Debug($"    {newHwndName} ({newHwnd})");
 
 
           var pauseSeconds = 0;
