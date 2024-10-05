@@ -124,7 +124,7 @@ namespace DistractionGuard
           }
           if (pauseSeconds > 0 && !Debounce)
           {
-            SecureDesktop.SwitchToNewDesktopFor(TimeSpan.FromSeconds(pauseSeconds));
+            //SecureDesktop.SwitchToNewDesktopFor(TimeSpan.FromSeconds(pauseSeconds));
           }
           Debounce = false;
           hwnd = newHwnd;

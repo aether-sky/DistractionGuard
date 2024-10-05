@@ -1,19 +1,31 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+/**
+ * TODO: make sure secs isn't 0
+ * 
+ */
 namespace DistractionGuard
 {
   internal class MainForm : Form
   {
+    [DllImport("user32.dll")]
+    public static extern bool HideCaret(IntPtr hWnd);
+
     RichTextBox activeLabel;
     Button activateButton;
     Button deactivateButton;
+    Button editButton;
+    Button deleteButton;
+    ListView modelList;
     bool active = false;
     int debugColor = 0;
     Dictionary<int, Color> tableDebugColors = new Dictionary<int, Color>();
@@ -24,6 +36,7 @@ namespace DistractionGuard
       DistractionGuard.SetActive(b);
       activeLabel.Clear();
       activeLabel.SelectionFont = new Font("Arial", 12, FontStyle.Regular);
+      activeLabel.SelectionColor = Color.Black;
       activeLabel.AppendText("DistractionGuard is ");
       activeLabel.SelectionFont = new Font("Arial", 12, FontStyle.Bold);
       if (active)
@@ -41,6 +54,7 @@ namespace DistractionGuard
         activeLabel.AppendText("NOT ACTIVE");
 
       }
+      hideCaret();
     }
     private void ToggleActivate()
     {
@@ -53,8 +67,13 @@ namespace DistractionGuard
       result.Dock = DockStyle.Fill;
       return result;
     }
+
+    private void hideCaret()
+    {
+      HideCaret(activeLabel.Handle);
+    }
+
     public MainForm() {
-      Model m = Model.Load();
       this.Text = "Distraction Guard";
       this.Size = new Size(800, 600);
       this.Dock = DockStyle.Fill;
@@ -69,10 +88,10 @@ namespace DistractionGuard
       mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80));
       mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
 
-      var leftTable = MakeTable("Left Table (Config)", 1, 4, 1);
+      var leftTable = MakeTable("Left Table (Config)", 1, 3, 1);
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, GetLabelHeight() * 2));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-      leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+      //leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
 
       var rightTable = MakeTable("Right Table (Activate/Deactivate)", 1, 2, 1);
@@ -82,55 +101,92 @@ namespace DistractionGuard
       mainTable.Controls.Add(leftTable, 0, 0);
       mainTable.Controls.Add(rightTable, 1, 0);
 
-      //LeftTable
+      //LeftTable.Banner
       this.activeLabel = MakeFillControl(() => new RichTextBox());
-      this.activeLabel.ReadOnly = true;
+      this.activeLabel.Enabled = false;
       this.activeLabel.BorderStyle = BorderStyle.None;
+      hideCaret();
       leftTable.Controls.Add(this.activeLabel, 0, 0);
 
-      //LeftTable.listView
+      //LeftTable.ListView
       var dataTable = MakeTable("Data Table", 1, 2);
-      var listView = new ListView()
+      this.modelList = new ListView
       {
         Dock = DockStyle.Fill,
-        View = View.Details
+        View = View.Details,
+        MultiSelect = false,
+        FullRowSelect = true
       };
-      m.PopulateList(listView);
-      leftTable.Controls.Add(listView, 0, 1);
+      Model.PopulateList(this.modelList);
+      modelList.SelectedIndexChanged += ModelList_SelectedIndexChanged;
+      leftTable.Controls.Add(this.modelList, 0, 1);
 
       //LeftTable.OtherTable
-      var otherTable = MakeTable("Other Table", 3, 1, 2);
+      /*var otherTable = MakeTable("Other Table", 3, 1, 2);
       var otherLabel = new Label()
       {
         Text = "Other:",
         Dock = DockStyle.Right
       };
-      var otherInput = MakeFillControl(() => new TextBox());
       otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, otherLabel.Width + 15));
       otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
       otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
 
+      var otherInput = MakeFillControl(() => new TextBox());
       otherTable.Controls.Add(otherLabel, 0, 0);
       otherTable.Controls.Add(otherInput, 1, 0);
+
       ToolTip otherTT = new ToolTip();
       otherTT.AutoPopDelay = 0;
       otherTT.InitialDelay = 10;
       var otherTTText = "Number of seconds to show the lock screen for windows not matching any rules above (default 0/excluded).";
       var ttControls = new List<Control>() { otherTable, otherLabel, otherInput };
       otherTT.SetToolTip(otherLabel, otherTTText);
-      leftTable.Controls.Add(otherTable, 0, 2);
+      leftTable.Controls.Add(otherTable, 0, 2);*/
 
       //LeftTable.AddEdit
-      var addEditTable = MakeTable("Add/Edit Table", 2, 1, 2);
-      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-      leftTable.Controls.Add(addEditTable, 0, 3);
+      var addEditTable = MakeTable("Add/Edit Table", 4, 1, 2);
+      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+      addEditTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+      leftTable.Controls.Add(addEditTable);
       var addButton = MakeFillControl(() => new Button());
       addButton.Text = "Add";
+      addButton.Click += makeAddEditButton_Click(false); 
       addEditTable.Controls.Add(addButton, 0, 0);
-      var editButton = MakeFillControl(() => new Button());
+      this.editButton = MakeFillControl(() => new Button());
       editButton.Text = "Edit";
+      editButton.Enabled = false;
+      editButton.Click += makeAddEditButton_Click(true);
       addEditTable.Controls.Add(editButton, 1, 0);
+      this.deleteButton = MakeFillControl(() => new Button());
+      deleteButton.Text = "Remove";
+      deleteButton.Enabled = false;
+      deleteButton.Click += (sender, e) =>
+      {
+        var selected = modelList.SelectedItems;
+        var removes = new List<int>();
+        foreach (var sel in selected)
+        {
+          if (sel != null)
+          {
+            var item = (ListViewItem)sel;
+            Model.RemovePattern(item.Text);
+            removes.Add(item.Index);
+          }
+        }
+        removes.Reverse();
+        foreach (var i in removes)
+        {
+          modelList.Items.RemoveAt(i);
+        }
+      };
+      
+      addEditTable.Controls.Add(deleteButton, 2, 0);
+      var optionsButton = MakeFillControl(() => new Button());
+      optionsButton.Text = "Options";
+      addEditTable.Controls.Add(optionsButton, 3, 0);
 
       //RightTable
       this.activateButton = MakeFillControl(() => new Button());
@@ -153,6 +209,129 @@ namespace DistractionGuard
       this.FormClosing += MainForm_Closing;
 
       SetActivation(false);
+    }
+
+    private void ModelList_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+      if (modelList.SelectedItems.Count > 0)
+      {
+        editButton.Enabled = true;
+        deleteButton.Enabled = true;
+      }
+      else
+      {
+        editButton.Enabled = false;
+        deleteButton.Enabled = false;
+      }
+    }
+
+    private Form MakeAddModal(bool isEdit)
+    {
+      var type = isEdit ? "Edit" : "Add";
+      var result = new Form
+      {
+        MinimizeBox = false,
+        MaximizeBox = false,
+        Width = 600,
+        Height = 300
+        //FormBorderStyle = FormBorderStyle.FixedDialog
+      };
+      var table = MakeTable($"{type}->Main Table", 1, 2, 0);
+      var lowerTable = MakeTable($"{type}->Lower Table", 2, 3, 1);
+      var instruction = new Label();
+      instruction.Width = 600;
+      instruction.Text = @"
+        The window title will be matched according to the regular
+        expression added below. Plaintext will be treated as an 
+        exact match. Put .* on either side of the input to match
+        any window containing the input.".ToSingleLine();
+
+      table.Controls.Add(instruction, 0, 0);
+      table.Controls.Add(lowerTable, 0, 1);
+      string selPattern = null;
+      int selSecs = -1;
+      if (isEdit)
+      {
+        if (modelList.SelectedIndices.Count > 0)
+        {
+          var item = modelList.SelectedItems[0];
+          selPattern = item.Text;
+          selSecs = int.Parse(item.SubItems[1].Text);
+        }
+        else
+        {
+          isEdit = false;
+        }
+
+      }
+      var strLabel = MakeFillControl(() => new Label());
+      strLabel.Text = "String to match:";
+      var strInput = MakeFillControl(() => new TextBox());
+      if (selPattern != null)
+      {
+        strInput.Text = selPattern;
+      }
+      var secLabel = MakeFillControl(() => new Label());
+      secLabel.Text = "Timeout seconds:";
+      var secInput = MakeFillControl(() => new TextBox());
+      if (selSecs != -1)
+      {
+        secInput.Text = selSecs.ToString();
+      }
+      secInput.KeyPress += (sender, e) =>
+      {
+        e.Handled = !char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar);
+      };
+      var addButton = MakeFillControl(() => new Button());
+      
+      addButton.Text = isEdit? "Add" : "Save";
+      addButton.Click += (sender, e) =>
+      {
+        int secs;
+        var parsed = int.TryParse(secInput.Text, out secs);
+        if (!parsed) {
+          secs = 15;
+        }
+        Model.AddPattern(strInput.Text, secs);
+        result.Close();
+        Model.PopulateList(modelList);
+      };
+
+      var cancelButton = MakeFillControl(() => new Button());
+      cancelButton.Text = "Cancel";
+      cancelButton.Click += (sender, e) =>
+      {
+        result.Close();
+      };
+
+      lowerTable.Controls.Add(strLabel, 0, 0);
+      lowerTable.Controls.Add(strInput, 1, 0);
+      lowerTable.Controls.Add(secLabel, 0, 1);
+      lowerTable.Controls.Add(secInput, 1, 1);
+      lowerTable.Controls.Add(addButton, 0, 2);
+      lowerTable.Controls.Add(cancelButton, 1, 2);
+
+      lowerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, strLabel.Width + 20));
+      lowerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+      lowerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+
+      result.Controls.Add(table);
+
+      return result;
+    }
+    private EventHandler makeAddEditButton_Click(bool isEdit)
+    {
+      return (sender, e) =>
+      {
+        var modal = MakeAddModal(isEdit);
+        modal.ShowDialog();
+      };
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+      base.OnLoad(e);
+      hideCaret(); // Ensure the caret is hidden on form load
     }
 
     static int GetLabelHeight()
@@ -203,7 +382,8 @@ namespace DistractionGuard
         (Color.Bisque, "Bisque"),
         (Color.DarkOrange, "DarkOrange")
       };
-      var (color,cname) = colors[debugColor++];
+      var (color,cname) = colors[debugColor++ % colors.Count];
+
       Globals.Debug($"Table {name} color {cname}");
       tableDebugColors[result.GetHashCode()] = color;
       result.CellPaint += (sender, e) =>

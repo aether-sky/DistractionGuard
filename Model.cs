@@ -8,19 +8,69 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Transactions;
+using System.Diagnostics;
 
 namespace DistractionGuard
 {
-  internal class Model
+
+  internal static class Model
   {
+    internal class ModelImpl
+    {
+
+      internal Dictionary<string, string> config;
+      internal Dictionary<string, int> patterns;
+      public ModelImpl(Dictionary<string, string> config, Dictionary<string, int> patterns)
+      {
+        this.config = config;
+        this.patterns = patterns;
+
+      }
+
+      public void LoadDummyValues()
+      {
+        config["other"] = "1";
+        patterns[".*Discord.*"] = 15;
+        patterns[".*Brave.*"] = 15;
+      }
+
+      public override string ToString()
+      {
+        var sb = new StringBuilder();
+        sb.Append("Model(patterns {");
+        foreach (var p in patterns)
+        {
+          sb.Append($"{p.Key}->{p.Value},");
+        }
+        sb.Append("}, config {");
+        foreach (var c in config)
+        {
+          sb.Append($"{c.Key}->{c.Value}");
+        }
+        sb.Append("})");
+        return sb.ToString();
+
+      }
+
+      internal void AddPattern(string text, int seconds)
+      {
+        patterns[text] = seconds;
+      }
+    }
+
+    static readonly ModelImpl model;
+    static Model() 
+    {
+      model = Load();
+      Save();
+    }
     const string DatabaseFile = "distractionGuardData.db";
     const string ConnectionString = "Data Source=" + DatabaseFile;//;New=False;
-
     static SqliteConnection GetConnection() {
       return new SqliteConnection(ConnectionString);
     }
 
-    static internal Model Load()
+    private static ModelImpl Load()
     {
       using var con = GetConnection();
       con.Open();
@@ -46,9 +96,16 @@ namespace DistractionGuard
       var config = GetConfig(con);
       var patterns = GetPatterns(con);
       con.Close();
-      var result = new Model(config, patterns);
+      var result = new ModelImpl(config, patterns);
+      if (result.config.Count == 0 && result.patterns.Count == 0) //insert some dummy items
+      {
+
+        Console.WriteLine($"Creating dummy model");
+        result.LoadDummyValues();
+
+      }
       Console.WriteLine($"Loaded {result}");
-      return new Model(config, patterns);
+      return result;
 
     }
 
@@ -82,16 +139,17 @@ namespace DistractionGuard
       return result;
     }
 
-    static void Save(Model m)
+    internal static void Save()
     {
+      Globals.Debug($"saving {Model.model}");
       using var con = GetConnection();
       con.Open();
       using var trans = con.BeginTransaction();
       try
       {
         ClearTables(con, trans);
-        SavePatterns(m, con, trans);
-        SaveConfig(m, con, trans);
+        SavePatterns(Model.model, con, trans);
+        SaveConfig(Model.model, con, trans);
       }
       catch (Exception e)
       {
@@ -100,6 +158,7 @@ namespace DistractionGuard
         Console.WriteLine($"Save failed: {e.Message}");
 
       }
+      trans.Commit();
     }
 
     static void ClearTables(SqliteConnection con, SqliteTransaction trans)
@@ -111,7 +170,7 @@ namespace DistractionGuard
         query.ExecuteNonQuery();
       }
     }
-    static void SavePatterns(Model m, SqliteConnection con, SqliteTransaction trans)
+    static void SavePatterns(ModelImpl m, SqliteConnection con, SqliteTransaction trans)
     {
       var query = "INSERT INTO Patterns(Pattern, Seconds) VALUES(@Pattern, @Seconds)";
       foreach (var p in m.patterns)
@@ -122,7 +181,7 @@ namespace DistractionGuard
         cmd.ExecuteNonQuery();
       }
     }
-    static void SaveConfig(Model m, SqliteConnection con, SqliteTransaction trans)
+    static void SaveConfig(ModelImpl m, SqliteConnection con, SqliteTransaction trans)
     {
       var query = "INSERT INTO Config(Name, Value) VALUES(@Name, @Value)";
       foreach (var p in m.config)
@@ -135,49 +194,14 @@ namespace DistractionGuard
     }
 
 
-    private Dictionary<string, string> config;
-    private Dictionary<string, int> patterns;
-    public Model(Dictionary<string, string> config, Dictionary<string, int> patterns)
-    {
-      this.config = config;
-      this.patterns = patterns;
-      if (config.Count == 0 && patterns.Count == 0) //insert some dummy items
-      {
 
-        Console.WriteLine($"Creating dummy model");
-        config["other"] = "1";
-        patterns[".*Discord.*"] = 15;
-        patterns[".*Brave.*"] = 15;
-        Save(this);
-      }
-
-    }
-
-    public override string ToString()
-    {
-      var sb = new StringBuilder();
-      sb.Append("Model(patterns {");
-      foreach (var p in patterns)
-      {
-        sb.Append($"{p.Key}->{p.Value},");
-      }
-      sb.Append("}, config {");
-      foreach (var c in config)
-      {
-        sb.Append($"{c.Key}->{c.Value}");
-      }
-      sb.Append("})");
-      return sb.ToString();
-
-    }
-
-    public void PopulateList(ListView list)
+    internal static void PopulateList(ListView list)
     {
       list.Clear();
       list.Columns.Add("Pattern", 100); // Width 100
       list.Columns.Add("Seconds", 80);  // Width 80
       list.Columns.Add("Windows Matching", 80);  // Width 80
-      foreach (var p in patterns)
+      foreach (var p in model.patterns)
       {
         var item = new ListViewItem(p.Key);
         item.SubItems.Add(p.Value.ToString());
@@ -185,6 +209,19 @@ namespace DistractionGuard
         list.Items.Add(item);
       }
 
+    }
+
+    internal static void AddPattern(string text, int seconds)
+    {
+      model.AddPattern(text, seconds); 
+      Save();
+
+    }
+
+    internal static void RemovePattern(string text)
+    {
+      model.patterns.Remove(text);
+      Save();
     }
   }
 }
