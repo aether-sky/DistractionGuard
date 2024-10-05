@@ -8,14 +8,18 @@ namespace DistractionGuard
   internal class DistractionGuard
   {
 
+    private static bool Active = true;
     private static bool Running = true;
+    private static bool Debounce = false;
     internal static void Close()
     {
-      SetRunning(false);
+      SetActive(false);
+      Running = false;
     }
-    internal static void SetRunning(bool b)
+    internal static void SetActive(bool b)
     {
-      Running = b;
+      Active = b;
+      Debounce = b; //no need to debounce if b is false
     }
 
     [DllImport("user32.dll")]
@@ -75,14 +79,15 @@ namespace DistractionGuard
       var config = DistractionGuard.LoadConfig();
       var hwnd = GetForegroundWindow();
       string hwndName = GetWindowTitle(hwnd);
-      while (true)
+      while (Running)
       {
         Thread.Sleep(10);
-        if (!Running)
+        if (!Active)
         {
           Thread.Sleep(500);
           continue;
         }
+
         var newHwnd = GetForegroundWindow();
         string newHwndName = GetWindowTitle(newHwnd);
         if (hwnd != newHwnd && !string.IsNullOrWhiteSpace(newHwndName) &&
@@ -117,10 +122,11 @@ namespace DistractionGuard
           {
             pauseSeconds = 0;
           }
-          if (pauseSeconds > 0)
+          if (pauseSeconds > 0 && !Debounce)
           {
             SecureDesktop.SwitchToNewDesktopFor(TimeSpan.FromSeconds(pauseSeconds));
           }
+          Debounce = false;
           hwnd = newHwnd;
           hwndName = newHwndName;
         }

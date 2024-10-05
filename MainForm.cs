@@ -15,14 +15,13 @@ namespace DistractionGuard
     Button activateButton;
     Button deactivateButton;
     bool active = false;
-    Label otherActiveLabel;
     int debugColor = 0;
     Dictionary<int, Color> tableDebugColors = new Dictionary<int, Color>();
 
     private void SetActivation(bool b)
     {
       active = b;
-      DistractionGuard.SetRunning(b);
+      DistractionGuard.SetActive(b);
       activeLabel.Clear();
       activeLabel.SelectionFont = new Font("Arial", 12, FontStyle.Regular);
       activeLabel.AppendText("DistractionGuard is ");
@@ -66,19 +65,12 @@ namespace DistractionGuard
       this.SetStyle(ControlStyles.DoubleBuffer, true);
       this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
 
-      MakeAltTables(m);
-      this.FormClosing += MainForm_Closing;
-
-      SetActivation(false);
-    }
-    private void MakeAltTables(Model m) {
-      //MainTable
       var mainTable = MakeTable("Main Table", 2, 1, 0);
       mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80));
       mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
 
       var leftTable = MakeTable("Left Table (Config)", 1, 4, 1);
-      leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+      leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, GetLabelHeight() * 2));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
@@ -86,6 +78,7 @@ namespace DistractionGuard
       var rightTable = MakeTable("Right Table (Activate/Deactivate)", 1, 2, 1);
       rightTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
       rightTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+
       mainTable.Controls.Add(leftTable, 0, 0);
       mainTable.Controls.Add(rightTable, 1, 0);
 
@@ -106,15 +99,25 @@ namespace DistractionGuard
       leftTable.Controls.Add(listView, 0, 1);
 
       //LeftTable.OtherTable
-      var otherTable = MakeTable("Other Table", 1, 2, 2);
+      var otherTable = MakeTable("Other Table", 3, 1, 2);
       var otherLabel = new Label()
       {
-        Text = "Other windows:",
-        Dock = DockStyle.Left
+        Text = "Other:",
+        Dock = DockStyle.Right
       };
       var otherInput = MakeFillControl(() => new TextBox());
+      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, otherLabel.Width + 15));
+      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
+      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+
       otherTable.Controls.Add(otherLabel, 0, 0);
       otherTable.Controls.Add(otherInput, 1, 0);
+      ToolTip otherTT = new ToolTip();
+      otherTT.AutoPopDelay = 0;
+      otherTT.InitialDelay = 10;
+      var otherTTText = "Number of seconds to show the lock screen for windows not matching any rules above (default 0/excluded).";
+      var ttControls = new List<Control>() { otherTable, otherLabel, otherInput };
+      otherTT.SetToolTip(otherLabel, otherTTText);
       leftTable.Controls.Add(otherTable, 0, 2);
 
       //LeftTable.AddEdit
@@ -146,8 +149,20 @@ namespace DistractionGuard
       };
       rightTable.Controls.Add(deactivateButton, 0, 1);
       this.Controls.Add(mainTable);
+
+      this.FormClosing += MainForm_Closing;
+
+      SetActivation(false);
     }
-    private Icon LoadIcon()
+
+    static int GetLabelHeight()
+    {
+      var label = new Label();
+      Globals.Debug($"LABEL HEIGHT: {label.Height}");
+      return label.Height;
+    }
+
+    private Icon? LoadIcon()
     {
       Assembly assembly = Assembly.GetExecutingAssembly();
       var iconPath = "DistractionGuard.iconsmall.png";
@@ -208,7 +223,7 @@ namespace DistractionGuard
 
 
 
-    private void MainForm_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    private void MainForm_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
       DistractionGuard.Close();
       /*if (MessageBox.Show("Are you sure you want to exit?", "Confirm exit", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
