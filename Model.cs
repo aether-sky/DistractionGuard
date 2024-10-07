@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Transactions;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace DistractionGuard
 {
@@ -118,8 +119,11 @@ namespace DistractionGuard
       while (read.Read())
       {
         string pattern = read.GetString(0);
-        int seconds = read.GetInt32(1);
-        result[pattern] = seconds;
+        if (Regex.Replace(pattern, @"\s+", "").Length > 0)
+        {
+          int seconds = read.GetInt32(1);
+          result[pattern] = seconds;
+        }
       }
       return result;
     }
@@ -192,15 +196,12 @@ namespace DistractionGuard
         cmd.ExecuteNonQuery();
       }
     }
-
-
-
+    
     internal static void PopulateList(ListView list)
     {
       list.Clear();
       list.Columns.Add("Pattern", 100); // Width 100
       list.Columns.Add("Seconds", 80);  // Width 80
-      list.Columns.Add("Windows Matching", 80);  // Width 80
       foreach (var p in model.patterns)
       {
         var item = new ListViewItem(p.Key);
@@ -208,13 +209,16 @@ namespace DistractionGuard
         item.SubItems.Add("todo");
         list.Items.Add(item);
       }
-
     }
 
     internal static void AddPattern(string text, int seconds)
     {
-      model.AddPattern(text, seconds); 
-      Save();
+
+      if (text.Length > 0)
+      {
+        model.AddPattern(text, seconds);
+        Save();
+      }
 
     }
 
@@ -222,6 +226,17 @@ namespace DistractionGuard
     {
       model.patterns.Remove(text);
       Save();
+    }
+
+    internal static void UpdateOption(string v, int secs)
+    {
+      model.config[v] = secs.ToString();
+      Save();
+    }
+
+    internal static string GetOtherSecs()
+    {
+      return model.config.GetValueOrDefault("other", "0");
     }
   }
 }

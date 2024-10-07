@@ -78,6 +78,8 @@ namespace DistractionGuard
       this.Size = new Size(800, 600);
       this.Dock = DockStyle.Fill;
       this.Icon = LoadIcon();
+      this.FormBorderStyle = FormBorderStyle.FixedSingle;
+      this.MaximizeBox = false;
       //supposedly helps flickering, but doesn't seem to
       this.SetStyle(ControlStyles.UserPaint, true);
       this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
@@ -109,7 +111,6 @@ namespace DistractionGuard
       leftTable.Controls.Add(this.activeLabel, 0, 0);
 
       //LeftTable.ListView
-      var dataTable = MakeTable("Data Table", 1, 2);
       this.modelList = new ListView
       {
         Dock = DockStyle.Fill,
@@ -117,9 +118,17 @@ namespace DistractionGuard
         MultiSelect = false,
         FullRowSelect = true
       };
-      Model.PopulateList(this.modelList);
       modelList.SelectedIndexChanged += ModelList_SelectedIndexChanged;
+      modelList.Resize += (sender, e) =>
+      {
+        if (modelList.Columns.Count > 1)
+        {
+          modelList.Columns[0].Width = (int)(modelList.ClientSize.Width * 0.7);
+          modelList.Columns[1].Width = (int)(modelList.ClientSize.Width * 0.3);
+        }
+      };
       leftTable.Controls.Add(this.modelList, 0, 1);
+      Model.PopulateList(this.modelList);
 
       //LeftTable.OtherTable
       /*var otherTable = MakeTable("Other Table", 3, 1, 2);
@@ -186,6 +195,7 @@ namespace DistractionGuard
       addEditTable.Controls.Add(deleteButton, 2, 0);
       var optionsButton = MakeFillControl(() => new Button());
       optionsButton.Text = "Options";
+      optionsButton.Click += OptionsButton_Click;
       addEditTable.Controls.Add(optionsButton, 3, 0);
 
       //RightTable
@@ -211,6 +221,67 @@ namespace DistractionGuard
       SetActivation(false);
     }
 
+    private void OptionsButton_Click(object? sender, EventArgs e)
+    {
+      var optionsForm = new Form()
+      {
+        FormBorderStyle = FormBorderStyle.FixedSingle,
+        Width = 500
+      };
+      var mainTable = MakeTable("Main options table", 1, 2);
+      mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+      mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+      var optionsTable = MakeTable("Options Table", 2, 1, 1);
+      var otherLabel = MakeFillControl(() => new Label());
+      otherLabel.Text = "Other windows:";
+      var otherttText = "Number of seconds to show the lock screen for windows not matching any configured pattern (default 0/excluded).";
+      attachToolTip(otherLabel, otherttText);
+      var otherInput = MakeFillControl(() => new TextBox());
+      otherInput.KeyPress += makeKeypressHandler();
+      otherInput.Text = Model.GetOtherSecs();
+      optionsTable.Controls.Add(otherLabel, 0, 0);
+      optionsTable.Controls.Add(otherInput, 1, 0);
+      optionsForm.Controls.Add(optionsTable);
+      mainTable.Controls.Add(optionsTable, 0, 0);
+
+      var buttonsTable = MakeTable("Options Button Table", 2, 0, 1);
+      buttonsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+      buttonsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+
+      var okButton = MakeFillControl(() => new Button());
+      okButton.Text = "Save";
+      okButton.Click += (sender, e) =>
+      {
+        var otherSec = otherInput.Text;
+        int secs = -1;
+        if (int.TryParse(otherSec, out secs) && secs > 0) 
+        {
+          Model.UpdateOption("other", secs);
+        }
+        optionsForm.Close();
+      };
+      var cancelButton = MakeFillControl(() => new Button());
+      cancelButton.Text = "Cancel";
+      cancelButton.Click += (sender, e) =>
+      {
+        optionsForm.Close();
+      };
+      buttonsTable.Controls.Add(okButton, 0, 0);
+      buttonsTable.Controls.Add(cancelButton, 1, 0);
+
+      mainTable.Controls.Add(buttonsTable, 0, 1);
+      optionsForm.Controls.Add(mainTable);
+      optionsForm.ShowDialog();
+    }
+
+    private void attachToolTip(Control control, string text)
+    {
+      ToolTip tooltip = new ToolTip();
+      tooltip.AutoPopDelay = 0;
+      tooltip.InitialDelay = 10;
+      tooltip.SetToolTip(control, text);
+    }
+
     private void ModelList_SelectedIndexChanged(object? sender, EventArgs e)
     {
       if (modelList.SelectedItems.Count > 0)
@@ -225,6 +296,14 @@ namespace DistractionGuard
       }
     }
 
+    private KeyPressEventHandler makeKeypressHandler()
+    {
+      return (sender, e) =>
+      {
+        e.Handled = !char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar);
+      };
+    }
+
     private Form MakeAddModal(bool isEdit)
     {
       var type = isEdit ? "Edit" : "Add";
@@ -232,19 +311,23 @@ namespace DistractionGuard
       {
         MinimizeBox = false,
         MaximizeBox = false,
-        Width = 600,
-        Height = 300
-        //FormBorderStyle = FormBorderStyle.FixedDialog
+        Width = 700,
+        Height = 500,
+        FormBorderStyle = FormBorderStyle.FixedSingle
       };
       var table = MakeTable($"{type}->Main Table", 1, 2, 0);
+      table.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));
       var lowerTable = MakeTable($"{type}->Lower Table", 2, 3, 1);
       var instruction = new Label();
+      instruction.AutoSize = true;
       instruction.Width = 600;
+      instruction.Dock = DockStyle.Left;
+
       instruction.Text = @"
         The window title will be matched according to the regular
         expression added below. Plaintext will be treated as an 
         exact match. Put .* on either side of the input to match
-        any window containing the input.".ToSingleLine();
+        any window containing the input.";
 
       table.Controls.Add(instruction, 0, 0);
       table.Controls.Add(lowerTable, 0, 1);
@@ -278,10 +361,8 @@ namespace DistractionGuard
       {
         secInput.Text = selSecs.ToString();
       }
-      secInput.KeyPress += (sender, e) =>
-      {
-        e.Handled = !char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar);
-      };
+      secInput.KeyPress += makeKeypressHandler();
+
       var addButton = MakeFillControl(() => new Button());
       
       addButton.Text = isEdit? "Add" : "Save";
@@ -328,6 +409,8 @@ namespace DistractionGuard
       };
     }
 
+    
+
     protected override void OnLoad(EventArgs e)
     {
       base.OnLoad(e);
@@ -337,7 +420,6 @@ namespace DistractionGuard
     static int GetLabelHeight()
     {
       var label = new Label();
-      Globals.Debug($"LABEL HEIGHT: {label.Height}");
       return label.Height;
     }
 
