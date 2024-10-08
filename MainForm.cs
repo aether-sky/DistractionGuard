@@ -254,7 +254,7 @@ namespace DistractionGuard
       {
         var otherSec = otherInput.Text;
         int secs = -1;
-        if (int.TryParse(otherSec, out secs) && secs > 0) 
+        if ((int.TryParse(otherSec, out secs) && secs > -1) || otherSec.Length == 0) 
         {
           Model.UpdateOption("other", secs);
         }

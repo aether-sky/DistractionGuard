@@ -16,9 +16,9 @@ namespace DistractionGuard
 
   internal static class Model
   {
+
     internal class ModelImpl
     {
-
       internal Dictionary<string, string> config;
       internal Dictionary<string, int> patterns;
       public ModelImpl(Dictionary<string, string> config, Dictionary<string, int> patterns)
@@ -237,6 +237,18 @@ namespace DistractionGuard
     internal static string GetOtherSecs()
     {
       return model.config.GetValueOrDefault("other", "0");
+    }
+
+    internal static int GetOtherSecsInt()
+    {
+      var secs = 0;
+      int.TryParse(GetOtherSecs(), out secs);
+      return secs;
+    }
+
+    internal static Dictionary<string, int> GetPatterns()
+    {
+      return model.patterns;
     }
   }
 }

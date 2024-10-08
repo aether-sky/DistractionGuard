@@ -76,11 +76,15 @@ namespace DistractionGuard
     }
     internal static void WatchWindows()
     {
-      var config = DistractionGuard.LoadConfig();
+      //var config = DistractionGuard.LoadConfig();
       var hwnd = GetForegroundWindow();
       string hwndName = GetWindowTitle(hwnd);
       while (Running)
       {
+
+        var patterns = Model.GetPatterns();
+        var otherSec = Model.GetOtherSecsInt();
+
         Thread.Sleep(10);
         if (!Active)
         {
@@ -100,7 +104,7 @@ namespace DistractionGuard
 
 
           var pauseSeconds = 0;
-          foreach (var i in config)
+          foreach (var i in patterns)
           {
             var windowName = i.Key;
             if (windowName == "other")
@@ -108,14 +112,14 @@ namespace DistractionGuard
               continue;
             }
             var pauseLength = i.Value;
-            if (Regex.Match(newHwndName, ".*" + windowName + ".*").Success)
+            if (Regex.Match(newHwndName, windowName).Success)
             {
               pauseSeconds = pauseLength;
             }
           }
-          if (pauseSeconds == 0 && config.ContainsKey("other"))
+          if (pauseSeconds == 0 && otherSec > 0)
           {
-            pauseSeconds = config["other"];
+            pauseSeconds = otherSec;
           }
 
           if (newHwndName == "Search" || newHwndName == "Task Switching" || newHwndName == "DistractionGuard")
@@ -124,7 +128,7 @@ namespace DistractionGuard
           }
           if (pauseSeconds > 0 && !Debounce)
           {
-            //SecureDesktop.SwitchToNewDesktopFor(TimeSpan.FromSeconds(pauseSeconds));
+            SecureDesktop.SwitchToNewDesktopFor(TimeSpan.FromSeconds(pauseSeconds));
           }
           Debounce = false;
           hwnd = newHwnd;
