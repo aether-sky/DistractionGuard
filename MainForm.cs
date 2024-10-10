@@ -341,7 +341,7 @@ namespace DistractionGuard
 
       var addButton = MakeFillControl(() => new Button());
       
-      addButton.Text = isEdit? "Add" : "Save";
+      addButton.Text = isEdit? "Save" : "Add";
       addButton.Click += (sender, e) =>
       {
         int secs;
