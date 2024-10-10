@@ -93,7 +93,6 @@ namespace DistractionGuard
       var leftTable = MakeTable("Left Table (Config)", 1, 3, 1);
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, GetLabelHeight() * 2));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-      //leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
       leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
 
       var rightTable = MakeTable("Right Table (Activate/Deactivate)", 1, 2, 1);
@@ -129,29 +128,6 @@ namespace DistractionGuard
       };
       leftTable.Controls.Add(this.modelList, 0, 1);
       Model.PopulateList(this.modelList);
-
-      //LeftTable.OtherTable
-      /*var otherTable = MakeTable("Other Table", 3, 1, 2);
-      var otherLabel = new Label()
-      {
-        Text = "Other:",
-        Dock = DockStyle.Right
-      };
-      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, otherLabel.Width + 15));
-      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50));
-      otherTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-
-      var otherInput = MakeFillControl(() => new TextBox());
-      otherTable.Controls.Add(otherLabel, 0, 0);
-      otherTable.Controls.Add(otherInput, 1, 0);
-
-      ToolTip otherTT = new ToolTip();
-      otherTT.AutoPopDelay = 0;
-      otherTT.InitialDelay = 10;
-      var otherTTText = "Number of seconds to show the lock screen for windows not matching any rules above (default 0/excluded).";
-      var ttControls = new List<Control>() { otherTable, otherLabel, otherInput };
-      otherTT.SetToolTip(otherLabel, otherTTText);
-      leftTable.Controls.Add(otherTable, 0, 2);*/
 
       //LeftTable.AddEdit
       var addEditTable = MakeTable("Add/Edit Table", 4, 1, 2);
@@ -409,8 +385,6 @@ namespace DistractionGuard
       };
     }
 
-    
-
     protected override void OnLoad(EventArgs e)
     {
       base.OnLoad(e);
@@ -483,15 +457,9 @@ namespace DistractionGuard
 
     }
 
-
-
     private void MainForm_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
       DistractionGuard.Close();
-      /*if (MessageBox.Show("Are you sure you want to exit?", "Confirm exit", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
-      {
-        e.Cancel = true;
-      }*/
     }
 
   }
