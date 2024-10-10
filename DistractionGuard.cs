@@ -8,6 +8,16 @@ namespace DistractionGuard
   internal class DistractionGuard
   {
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    static extern int GetWindowTextLength(IntPtr hWnd);
+
+
     private static bool Active = true;
     private static bool Running = true;
     private static bool Debounce = false;
@@ -21,59 +31,7 @@ namespace DistractionGuard
       Active = b;
       Debounce = b; //no need to debounce if b is false
     }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    static extern int GetWindowTextLength(IntPtr hWnd);
-
-    internal static Dictionary<string,int> LoadConfig()
-    {
-      Globals.Debug("HERE:" + System.Reflection.Assembly.GetExecutingAssembly().Location);
-      var path = "";
-      var dtConfig = "C:/Users/sky/Desktop/config.txt";
-      var defaultConfig = "config.txt";
-      if (File.Exists(dtConfig))
-      {
-        path = dtConfig;
-      }
-      else
-      {
-        path = defaultConfig;
-      }
-      Globals.Debug($"Using config {path}");
-      var contents = File.ReadAllText(path);
-
-      var file = Regex.Split(contents, "\n|\r\n");
-
-      var config = new Dictionary<string, int>();
-      foreach (var f in file)
-      {
-        if (f.Length > 0 && f[0] == ';')
-        {
-          Globals.Debug("Skipping " + f);
-          continue;
-        }
-        var pair = f.Split("=");
-        if (pair.Length < 2)
-        {
-          if (f.Trim().Length > 0) Globals.Debug("Skipping line: " + f);
-          continue;
-        }
-        var i = int.Parse(pair[1]);
-        config[pair[0]] = i;
-      }
-      foreach (var c in config)
-      {
-
-        Globals.Debug($"{c.Key}<->{c.Value}");
-      }
-      return config;
-    }
+   
     internal static void WatchWindows()
     {
       //var config = DistractionGuard.LoadConfig();
@@ -107,10 +65,6 @@ namespace DistractionGuard
           foreach (var i in patterns)
           {
             var windowName = i.Key;
-            if (windowName == "other")
-            {
-              continue;
-            }
             var pauseLength = i.Value;
             if (Regex.Match(newHwndName, windowName).Success)
             {
@@ -122,6 +76,7 @@ namespace DistractionGuard
             pauseSeconds = otherSec;
           }
 
+          //avoids start menu or DistractionGuard from triggering it
           if (newHwndName == "Search" || newHwndName == "Task Switching" || newHwndName == "DistractionGuard")
           {
             pauseSeconds = 0;

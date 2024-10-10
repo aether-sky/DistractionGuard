@@ -39,15 +39,9 @@ namespace DistractionGuard
       {
         var sb = new StringBuilder();
         sb.Append("Model(patterns {");
-        foreach (var p in patterns)
-        {
-          sb.Append($"{p.Key}->{p.Value},");
-        }
+        patterns.Aggregate(sb, (b, pair) => { b.Append($"{pair.Key}->{pair.Value},"); return b; });
         sb.Append("}, config {");
-        foreach (var c in config)
-        {
-          sb.Append($"{c.Key}->{c.Value}");
-        }
+        config.Aggregate(sb, (b, pair) => { b.Append($"{pair.Key}->{pair.Value},"); return b; });
         sb.Append("})");
         return sb.ToString();
 
@@ -65,6 +59,7 @@ namespace DistractionGuard
       model = Load();
       Save();
     }
+
     const string DatabaseFile = "distractionGuardData.db";
     const string ConnectionString = "Data Source=" + DatabaseFile;//;New=False;
     static SqliteConnection GetConnection() {
@@ -101,46 +96,13 @@ namespace DistractionGuard
       if (result.config.Count == 0 && result.patterns.Count == 0) //insert some dummy items
       {
 
-        Console.WriteLine($"Creating dummy model");
+        Globals.Debug($"Creating dummy model");
         result.LoadDummyValues();
 
       }
-      Console.WriteLine($"Loaded {result}");
+      Globals.Debug($"Loaded {result}");
       return result;
 
-    }
-
-    static Dictionary<string, int> GetPatterns(SqliteConnection con)
-    {
-      var result = new Dictionary<string, int>();
-      string query = "SELECT Pattern, Seconds FROM Patterns";
-      using var cmd = new SqliteCommand(query, con);
-      using var read = cmd.ExecuteReader();
-      while (read.Read())
-      {
-        string pattern = read.GetString(0);
-        if (Regex.Replace(pattern, @"\s+", "").Length > 0)
-        {
-          int seconds = read.GetInt32(1);
-          result[pattern] = seconds;
-        }
-      }
-      return result;
-    }
-
-    static Dictionary<string, string> GetConfig(SqliteConnection con)
-    {
-      var result = new Dictionary<string, string>();
-      string query = "SELECT Name, Value FROM Config";
-      using var cmd = new SqliteCommand(query, con);
-      using var read = cmd.ExecuteReader();
-      while (read.Read())
-      {
-        string name = read.GetString(0);
-        string value = read.GetString(1);
-        result[name] = value;
-      }
-      return result;
     }
 
     internal static void Save()
@@ -232,6 +194,39 @@ namespace DistractionGuard
     {
       model.config[v] = secs.ToString();
       Save();
+    }
+
+    static Dictionary<string, int> GetPatterns(SqliteConnection con)
+    {
+      var result = new Dictionary<string, int>();
+      string query = "SELECT Pattern, Seconds FROM Patterns";
+      using var cmd = new SqliteCommand(query, con);
+      using var read = cmd.ExecuteReader();
+      while (read.Read())
+      {
+        string pattern = read.GetString(0);
+        if (Regex.Replace(pattern, @"\s+", "").Length > 0)
+        {
+          int seconds = read.GetInt32(1);
+          result[pattern] = seconds;
+        }
+      }
+      return result;
+    }
+
+    static Dictionary<string, string> GetConfig(SqliteConnection con)
+    {
+      var result = new Dictionary<string, string>();
+      string query = "SELECT Name, Value FROM Config";
+      using var cmd = new SqliteCommand(query, con);
+      using var read = cmd.ExecuteReader();
+      while (read.Read())
+      {
+        string name = read.GetString(0);
+        string value = read.GetString(1);
+        result[name] = value;
+      }
+      return result;
     }
 
     internal static string GetOtherSecs()

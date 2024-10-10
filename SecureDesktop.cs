@@ -4,7 +4,6 @@ using System.Threading;
 
 namespace DistractionGuard
 {
-
   internal class SecureDesktop
   {
     [DllImport("user32.dll")]
