@@ -29,6 +29,7 @@ namespace DistractionGuard
     bool active = false;
     int debugColor = 0;
     Dictionary<int, Color> tableDebugColors = new Dictionary<int, Color>();
+    bool enableDebugColors = false;
 
     private void SetActivation(bool b)
     {
@@ -422,9 +423,11 @@ namespace DistractionGuard
         Dock = DockStyle.Fill,
         ColumnCount = cols,
         RowCount = rows,
-        CellBorderStyle = TableLayoutPanelCellBorderStyle.OutsetDouble
+        //CellBorderStyle = TableLayoutPanelCellBorderStyle.OutsetDouble
       };
-      List<(Color,string)> colors = new List<(Color,string)> {
+      if (enableDebugColors)
+      {
+        List<(Color, string)> colors = new List<(Color, string)> {
         (Color.AliceBlue, "AliceBlue"),
         (Color.Red, "Red"),
         (Color.Purple, "Purple"),
@@ -438,21 +441,22 @@ namespace DistractionGuard
         (Color.Bisque, "Bisque"),
         (Color.DarkOrange, "DarkOrange")
       };
-      var (color,cname) = colors[debugColor++ % colors.Count];
+        var (color, cname) = colors[debugColor++ % colors.Count];
 
-      Globals.Debug($"Table {name} color {cname}");
-      tableDebugColors[result.GetHashCode()] = color;
-      result.CellPaint += (sender, e) =>
-      {
-        e.Graphics.DrawRectangle(new Pen(color), e.CellBounds);
-        Rectangle adjustedRect = new Rectangle(
-                   e.CellBounds.X + depth*2,  // Move right by 2 pixels
-                   e.CellBounds.Y + depth*2,  // Move down by 2 pixels
-                   e.CellBounds.Width - depth*4,  // Shrink width by 4 pixels
-                   e.CellBounds.Height - depth*4  // Shrink height by 4 pixels
-               );
-        e.Graphics.FillRectangle(new SolidBrush(color), adjustedRect);
-      };
+        Globals.Debug($"Table {name} color {cname}");
+        tableDebugColors[result.GetHashCode()] = color;
+        result.CellPaint += (sender, e) =>
+        {
+          e.Graphics.DrawRectangle(new Pen(color), e.CellBounds);
+          Rectangle adjustedRect = new Rectangle(
+                     e.CellBounds.X + depth * 2,  // Move right by 2 pixels
+                     e.CellBounds.Y + depth * 2,  // Move down by 2 pixels
+                     e.CellBounds.Width - depth * 4,  // Shrink width by 4 pixels
+                     e.CellBounds.Height - depth * 4  // Shrink height by 4 pixels
+                 );
+          e.Graphics.FillRectangle(new SolidBrush(color), adjustedRect);
+        };
+      }
       return result;
 
     }
@@ -463,4 +467,4 @@ namespace DistractionGuard
     }
 
   }
-}
+  }
