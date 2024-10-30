@@ -30,9 +30,10 @@ namespace DistractionGuard
 
       public void LoadDummyValues()
       {
-        config["other"] = "1";
+        //config["other"] = "1";
         patterns[".*Discord.*"] = 15;
-        patterns[".*Brave.*"] = 15;
+        //patterns[".*Brave.*"] = 15;
+        patterns[".*Google Chrome.*"] = 15;
       }
 
       public override string ToString()
