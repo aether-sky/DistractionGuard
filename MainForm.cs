@@ -118,14 +118,11 @@ namespace DistractionGuard
         MultiSelect = false,
         FullRowSelect = true
       };
+
       modelList.SelectedIndexChanged += ModelList_SelectedIndexChanged;
       modelList.Resize += (sender, e) =>
       {
-        if (modelList.Columns.Count > 1)
-        {
-          modelList.Columns[0].Width = (int)(modelList.ClientSize.Width * 0.7);
-          modelList.Columns[1].Width = (int)(modelList.ClientSize.Width * 0.3);
-        }
+        ResizeModelList();
       };
       leftTable.Controls.Add(this.modelList, 0, 1);
       Model.PopulateList(this.modelList);
@@ -196,6 +193,15 @@ namespace DistractionGuard
       this.FormClosing += MainForm_Closing;
 
       SetActivation(false);
+    }
+
+    private void ResizeModelList()
+    {
+      if (modelList.Columns.Count > 1)
+      {
+        modelList.Columns[0].Width = (int)(modelList.ClientSize.Width * 0.7);
+        modelList.Columns[1].Width = (int)(modelList.ClientSize.Width * 0.3);
+      }
     }
 
     private void OptionsButton_Click(object? sender, EventArgs e)
@@ -292,6 +298,7 @@ namespace DistractionGuard
         Height = 500,
         FormBorderStyle = FormBorderStyle.FixedSingle
       };
+
       var table = MakeTable($"{type}->Main Table", 1, 2, 0);
       table.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));
       var lowerTable = MakeTable($"{type}->Lower Table", 2, 3, 1);
@@ -353,6 +360,8 @@ namespace DistractionGuard
         Model.AddPattern(strInput.Text, secs);
         result.Close();
         Model.PopulateList(modelList);
+        
+        ResizeModelList();
       };
 
       var cancelButton = MakeFillControl(() => new Button());
