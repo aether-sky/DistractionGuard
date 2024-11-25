@@ -357,7 +357,12 @@ namespace DistractionGuard
         if (!parsed) {
           secs = 15;
         }
+        if (isEdit && selPattern != null)
+        {
+          Model.RemovePattern(selPattern);
+        }
         Model.AddPattern(strInput.Text, secs);
+        
         result.Close();
         Model.PopulateList(modelList);
         
